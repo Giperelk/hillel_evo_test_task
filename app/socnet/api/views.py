@@ -112,18 +112,18 @@ class LikeAnalyticsView(APIView):
         date_to = request.query_params.get('date_to', None)
 
         try:
-            start_date = (
+            date_from = (
                 date_from
                 if date_from is not None
                 else str(datetime.now().date())
             )
-            datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = (
+            datetime.strptime(date_from, '%Y-%m-%d')
+            date_to = (
                 date_to
                 if date_to is not None
-                else str((datetime.now() + timedelta(days=1)).date())
+                else str(datetime.now().date())
             )
-            datetime.strptime(end_date, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
 
         except ValueError:
             return Response(
@@ -131,13 +131,27 @@ class LikeAnalyticsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        likes_count = Like.objects.filter(created_at__range=(start_date, end_date)).count()
+        start_date = datetime.strptime(date_from, '%Y-%m-%d')
+        end_date = datetime.strptime(date_to, '%Y-%m-%d')
+
+        date_likes = {}
+
+        current_date = start_date
+
+        while current_date <= end_date:
+            next_date = current_date + timedelta(days=1)
+            likes_count = Like.objects.filter(
+                created_at__range=(current_date, next_date)
+            ).count()
+
+            date_likes[current_date.strftime('%Y-%m-%d')] = likes_count
+            current_date = next_date
 
         return Response(
             {
-                'date_from': start_date,
-                'date_to': end_date,
-                "likes_count": likes_count,
+                'date_from': date_from,
+                'date_to': date_to,
+                "likes_by_date": date_likes,
             },
             status=status.HTTP_200_OK
         )
